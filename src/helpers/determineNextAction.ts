@@ -7,6 +7,22 @@ import { useAppState } from '../state/store';
 import { availableActions } from './availableActions';
 import { ParsedResponseSuccess } from './parseResponse';
 
+type OllamaChatResponse = {
+  model: string;
+  created_at: string;
+  message: {
+    role: string;
+    content: string;
+  };
+  done: boolean;
+  total_duration: number;
+  load_duration: number;
+  prompt_eval_count: number;
+  prompt_eval_duration: number;
+  eval_count: number;
+  eval_duration: number;
+};
+
 const formattedActions = availableActions
   .map((action, i) => {
     const args = action.args
@@ -27,7 +43,7 @@ You will be be given a task to perform and the current state of the DOM. You wil
 
 This is an example of an action:
 
-<Thought>I should click the add to cart button</Thought>
+<Thought>Since I found the shoes I'm looking for, I will click the button labeled "Add to Cart"</Thought>
 <Action>click(223)</Action>
 
 You must always include the <Thought> and <Action> open/close tags or else your response will be marked as invalid.`;
@@ -41,83 +57,85 @@ export async function determineNextAction(
 ) {
   const model = useAppState.getState().settings.selectedModel;
   const prompt = formatPrompt(taskInstructions, previousActions, simplifiedDOM);
-  const key = useAppState.getState().settings.openAIKey;
-  if (!key) {
-    notifyError?.('No OpenAI key found');
-    return null;
-  }
-
-  const openai = new OpenAIApi(
-    new Configuration({
-      apiKey: key,
-    })
-  );
-
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const completion = await openai.createChatCompletion({
-        model: model,
-        messages: [
-          {
-            role: 'system',
-            content: systemMessage,
-          },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 500,
-        temperature: 0,
-        stop: ['</Action>'],
-      });
+      const messages = chatMessages(previousActions, prompt);
+      const response = await fetchCompletion(model, messages);
+      const data: OllamaChatResponse = await response.json();
+
+      if (!response.ok) { throw new Error(data.message.content); }
 
       return {
-        usage: completion.data.usage as CreateCompletionResponseUsage,
+        usage: {
+          prompt_tokens: data.prompt_eval_count,
+          completion_tokens: data.eval_count
+        },
         prompt,
         response:
-          completion.data.choices[0].message?.content?.trim() + '</Action>',
+          data.message?.content?.trim() + '</Action>',
       };
+
     } catch (error: any) {
-      console.log('determineNextAction error', error);
-      if (error.response.data.error.message.includes('server error')) {
-        // Problem with the OpenAI API, try again
-        if (notifyError) {
-          notifyError(error.response.data.error.message);
-        }
+      if (error.message.includes('server error')) {
+        notifyError && notifyError(error.message);
       } else {
-        // Another error, give up
-        throw new Error(error.response.data.error.message);
+        throw new Error(error.message);
       }
     }
   }
+
   throw new Error(
     `Failed to complete query after ${maxAttempts} attempts. Please try again later.`
   );
 }
 
-export function formatPrompt(
+const actionTemplate = ({ action, thought }: ParsedResponseSuccess): string => `<Thought>${thought}</Thought>\n<Action>${action}</Action>`;
+
+export const formatPrompt = (
   taskInstructions: string,
   previousActions: ParsedResponseSuccess[],
   pageContents: string
-) {
-  let previousActionsString = '';
-
-  if (previousActions.length > 0) {
-    const serializedActions = previousActions
-      .map(
-        (action) =>
-          `<Thought>${action.thought}</Thought>\n<Action>${action.action}</Action>`
-      )
-      .join('\n\n');
-    previousActionsString = `You have already taken the following actions: \n${serializedActions}\n\n`;
-  }
-
-  return `The user requests the following task:
+) => `The user requests the following task:
 
 ${taskInstructions}
 
-${previousActionsString}
-
-Current time: ${new Date().toLocaleString()}
-
+${!!false && previousActions.length ? `You have already taken the following actions: \n${previousActions.map(actionTemplate).join('\n\n')}\n\n` : ""}
 Current page contents:
 ${pageContents}`;
+
+function chatMessages(previousActions: ParsedResponseSuccess[], prompt: string) {
+  return [
+    ...previousActions.map(action => ({
+      role: 'assistant', content: actionTemplate(action)
+    })),
+    { role: 'user', content: prompt },
+    { role: 'system', content: systemMessage, },
+  ];
 }
+
+type Message = {
+  role: string;
+  content: string;
+};
+
+async function fetchCompletion(model: string, messages: Message[]) {
+  return await fetch('http://localhost:11434/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      stream: false,
+      messages,
+      model,
+      seed: 42,
+      options: {
+        // top_k: 200,
+        // top_p: 0.8,
+        // num_ctx: 4096,
+        // temperature: 1,
+        // repeat_penalty: 2,
+        // repeat_last_n: -1
+      },
+    })
+  });
+}
+

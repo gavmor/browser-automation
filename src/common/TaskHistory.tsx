@@ -96,12 +96,12 @@ const TaskHistoryItem = ({ index, entry }: TaskHistoryItemProps) => {
         <Accordion allowMultiple w="full" defaultIndex={1}>
           <CollapsibleComponent
             title="Prompt"
-            subtitle={`${entry.usage.prompt_tokens} tokens`}
+            subtitle={`${entry.usage?.prompt_tokens} tokens`}
             text={entry.prompt}
           />
           <CollapsibleComponent
             title="Response"
-            subtitle={`${entry.usage.completion_tokens} tokens`}
+            subtitle={`${entry.usage?.completion_tokens} tokens`}
             text={entry.response}
           />
           <CollapsibleComponent

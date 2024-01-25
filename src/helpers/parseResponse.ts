@@ -13,10 +13,12 @@ export type ParsedResponse =
   };
 
 export function parseResponse(text: string): ParsedResponse {
-  const thoughtMatch = text.match(/<Thought>(.*?)<\/Thought>/);
-  const actionMatch = text.match(/<Action>(.*?)<\/Action>/);
+  let thoughtMatch = text.match(/<Thought>((.|\n)*?)<\/\W*Thought>/i);
+  const actionMatch = text.replace(" ","").match(/<Action>(.*?)<\/\W*Action>/i);
 
   if (!thoughtMatch) {
+    // thoughtMatch = text.match(/((.|\n)*?)<Action>/i);
+
     return {
       error: 'Invalid response: Thought not found in the model response.',
     };
