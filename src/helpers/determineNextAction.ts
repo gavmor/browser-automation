@@ -43,11 +43,11 @@ You will be be given a task to perform and the current state of the DOM. You wil
 
 This is an example of an action:
 
-<Thought>Since I found the shoes I'm looking for, I will click the button labeled "Add to Cart"</Thought>
+<Justification>Since I found the shoes I'm looking for, I will click the button labeled "Add to Cart"</Justification>
 <Action>click(223)</Action>
 
-You must always include the <Thought> and <Action> open/close tags or else your response will be marked as invalid.`;
-
+You must always include the <Justification> and <Action> open/close tags or else your response will be marked as invalid.`;
+console.log(systemMessage)
 export async function determineNextAction(
   taskInstructions: string,
   previousActions: ParsedResponseSuccess[],
@@ -89,7 +89,7 @@ export async function determineNextAction(
   );
 }
 
-const actionTemplate = ({ action, thought }: ParsedResponseSuccess): string => `<Thought>${thought}</Thought>\n<Action>${action}</Action>`;
+const actionTemplate = ({ action, thought }: ParsedResponseSuccess): string => `<Justification>${thought}</Justification>\n<Action>${action}</Action>`;
 
 export const formatPrompt = (
   taskInstructions: string,
@@ -128,9 +128,9 @@ async function fetchCompletion(model: string, messages: Message[]) {
       model,
       seed: 42,
       options: {
-        // top_k: 200,
+        top_k: 10,
         // top_p: 0.8,
-        // num_ctx: 4096,
+        num_ctx: 65536,
         // temperature: 1,
         // repeat_penalty: 2,
         // repeat_last_n: -1

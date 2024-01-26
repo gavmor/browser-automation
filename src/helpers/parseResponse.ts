@@ -13,14 +13,14 @@ export type ParsedResponse =
   };
 
 export function parseResponse(text: string): ParsedResponse {
-  let thoughtMatch = text.match(/<Thought>((.|\n)*?)<\/\W*Thought>/i);
+  let thoughtMatch = text.match(/<Justification>((.|\n)*?)<\/\W*Justification>/i);
   const actionMatch = text.replace(" ","").match(/<Action>(.*?)<\/\W*Action>/i);
 
   if (!thoughtMatch) {
     // thoughtMatch = text.match(/((.|\n)*?)<Action>/i);
 
     return {
-      error: 'Invalid response: Thought not found in the model response.',
+      error: 'Invalid response: Justification not found in the model response.',
     };
   }
 
