@@ -47,7 +47,7 @@ This is an example of an action:
 <Action>click(223)</Action>
 
 You must always include the <Justification> and <Action> open/close tags or else your response will be marked as invalid.`;
-console.log(systemMessage)
+
 export async function determineNextAction(
   taskInstructions: string,
   previousActions: ParsedResponseSuccess[],
@@ -63,7 +63,7 @@ export async function determineNextAction(
       const response = await fetchCompletion(model, messages);
       const data: OllamaChatResponse = await response.json();
 
-      if (!response.ok) { throw new Error(data.message.content); }
+      if (!response.ok) { throw new Error(data.message?.content); }
 
       return {
         usage: {
@@ -77,9 +77,9 @@ export async function determineNextAction(
 
     } catch (error: any) {
       if (error.message.includes('server error')) {
-        notifyError && notifyError(error.message);
+        // notifyError && notifyError(error.message);
       } else {
-        throw new Error(error.message);
+        // throw new Error(error.message);
       }
     }
   }
@@ -107,7 +107,7 @@ function chatMessages(previousActions: ParsedResponseSuccess[], prompt: string) 
   return [
     ...previousActions.map(action => ({
       role: 'assistant', content: actionTemplate(action)
-    })),
+    })).slice(-5),
     { role: 'user', content: prompt },
     { role: 'system', content: systemMessage, },
   ];
@@ -128,10 +128,10 @@ async function fetchCompletion(model: string, messages: Message[]) {
       model,
       seed: 42,
       options: {
-        top_k: 10,
+        // top_k: 10,
         // top_p: 0.8,
-        num_ctx: 65536,
-        // temperature: 1,
+        // num_ctx: 65536,
+        temperature: 1,
         // repeat_penalty: 2,
         // repeat_last_n: -1
       },

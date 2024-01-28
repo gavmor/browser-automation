@@ -139,8 +139,10 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
             });
           });
           if ('error' in action) {
-            onError(action.error);
-            break;
+            // onError(action.error);
+            // break;
+            console.log(action.error)
+            continue
           }
           if (
             action === null ||
@@ -150,13 +152,17 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
             break;
           }
 
-          if (action.parsedAction.name === 'click') {
-            await callDOMAction('click', action.parsedAction.args);
-          } else if (action.parsedAction.name === 'setValue') {
-            await callDOMAction(
-              action?.parsedAction.name,
-              action?.parsedAction.args
-            );
+          try {
+            if (action.parsedAction.name === 'click') {
+              await callDOMAction('click', action.parsedAction.args);
+            } else if (action.parsedAction.name === 'setValue') {
+              await callDOMAction(
+                action?.parsedAction.name,
+                action?.parsedAction.args
+              );
+            }
+          } catch {
+            continue
           }
 
           if (wasStopped()) break;
