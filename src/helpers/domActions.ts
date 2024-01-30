@@ -10,6 +10,8 @@ async function sendCommand(method: string, params?: any) {
 }
 
 async function getObjectId(originalId: number) {
+  console.log("---- getObjectId ----")
+  console.log("originalId", originalId)
   const uniqueId = await callRPC('getUniqueElementSelectorId', [originalId]);
   // get node id
   const document = (await sendCommand('DOM.getDocument')) as any;
@@ -17,6 +19,8 @@ async function getObjectId(originalId: number) {
     nodeId: document.root.nodeId,
     selector: `[${TAXY_ELEMENT_SELECTOR}="${uniqueId}"]`,
   })) as any;
+
+  console.log("nodeId", nodeId)
   if (!nodeId) {
     throw new Error('Could not find node');
   }
@@ -26,6 +30,7 @@ async function getObjectId(originalId: number) {
   if (!objectId) {
     throw new Error('Could not find object');
   }
+  console.log("objectId", objectId)
   return objectId;
 }
 

@@ -11,11 +11,12 @@ const ModelDropdown = () => {
   return (
     // Chakra UI Select component
     <Select
-      value={selectedModel || ''}
+      value={selectedModel || 'mistral'}
       onChange={(e) => updateSettings({ selectedModel: e.target.value })}
     >
       <option value="mistral">Mistral</option>
       <option value="mixtral">Mixtral</option>
+      <option value="neural-chat">Intel Neural-Chat</option>
     </Select>
   );
 };

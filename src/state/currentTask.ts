@@ -102,17 +102,15 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
           setActionStatus('transforming-dom');
           const currentDom = templatize(html);
 
-          const previousActions = get()
-            .currentTask.history.map((entry) => entry.action)
-            .filter(truthyFilter);
+          const previousTasks = get().currentTask.history
 
           setActionStatus('performing-query');
 
           const query = await determineNextAction(
             instructions,
-            previousActions.filter(
-              (pa) => !('error' in pa)
-            ) as ParsedResponseSuccess[],
+            previousTasks.filter(
+              ({action}) => !('error' in action)
+            ),
             currentDom,
             3,
             onError
@@ -135,7 +133,7 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
               prompt: query.prompt,
               response: query.response,
               action,
-              usage: query.usage,
+              usage: {...query.usage, total_tokens: query.usage.completion_tokens + query.usage.prompt_tokens},
             });
           });
           if ('error' in action) {

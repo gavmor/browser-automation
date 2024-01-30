@@ -6,6 +6,7 @@ import {
 import { useAppState } from '../state/store';
 import { availableActions } from './availableActions';
 import { ParsedResponseSuccess } from './parseResponse';
+import { TaskHistoryEntry } from '../state/currentTask';
 
 type OllamaChatResponse = {
   model: string;
@@ -50,16 +51,17 @@ You must always include the <Justification> and <Action> open/close tags or else
 
 export async function determineNextAction(
   taskInstructions: string,
-  previousActions: ParsedResponseSuccess[],
+  previousTasks: any[],
   simplifiedDOM: string,
   maxAttempts = 3,
   notifyError?: (error: string) => void
 ) {
   const model = useAppState.getState().settings.selectedModel;
-  const prompt = formatPrompt(taskInstructions, previousActions, simplifiedDOM);
+  const prompt = formatPrompt(taskInstructions, simplifiedDOM);
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const messages = chatMessages(previousActions, prompt);
+      const messages = chatMessages(previousTasks, prompt);
+      console.log(messages)
       const response = await fetchCompletion(model, messages);
       const data: OllamaChatResponse = await response.json();
 
@@ -72,7 +74,7 @@ export async function determineNextAction(
         },
         prompt,
         response:
-          data.message?.content?.trim() + '</Action>',
+          data.message?.content?.trim(),
       };
 
     } catch (error: any) {
@@ -93,23 +95,22 @@ const actionTemplate = ({ action, thought }: ParsedResponseSuccess): string => `
 
 export const formatPrompt = (
   taskInstructions: string,
-  previousActions: ParsedResponseSuccess[],
   pageContents: string
 ) => `The user requests the following task:
 
 ${taskInstructions}
 
-${!!false && previousActions.length ? `You have already taken the following actions: \n${previousActions.map(actionTemplate).join('\n\n')}\n\n` : ""}
 Current page contents:
 ${pageContents}`;
 
-function chatMessages(previousActions: ParsedResponseSuccess[], prompt: string) {
+function chatMessages(previousTasks: any[], prompt: string) {
   return [
-    ...previousActions.map(action => ({
-      role: 'assistant', content: actionTemplate(action)
-    })).slice(-5),
+    ...previousTasks.map(({action, prompt}) => ([
+      { role: 'user', content: prompt },
+      { role: 'assistant', content: actionTemplate(action) }
+  ])).slice(-10).flat(),
+  { role: 'system', content: systemMessage, },
     { role: 'user', content: prompt },
-    { role: 'system', content: systemMessage, },
   ];
 }
 
@@ -130,8 +131,8 @@ async function fetchCompletion(model: string, messages: Message[]) {
       options: {
         // top_k: 10,
         // top_p: 0.8,
-        // num_ctx: 65536,
-        temperature: 1,
+        num_ctx: 65536,
+        temperature: 2,
         // repeat_penalty: 2,
         // repeat_last_n: -1
       },
