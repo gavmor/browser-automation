@@ -13,8 +13,8 @@ export type ParsedResponse =
   };
 
 export function parseResponse(text: string): ParsedResponse {
-  let thoughtMatch = text.match(/<Justification>((.|\n)*?)<\/\W*Justification>/i);
-  const actionMatch = text.replace(" ","").match(/<Action>(.*?)<\/\W*Action>/i);
+  let thoughtMatch = text.match(/<\W*Justification\W*>((.|\n)*?)<\/\W*Justification\W*>/i);
+  const actionMatch = text.replace(" ","").match(/<\W*Action\W*>(.*?)<\/\W*Action\W*>/i);
 
   if (!thoughtMatch) {
     // thoughtMatch = text.match(/((.|\n)*?)<Action>/i);
