@@ -93,7 +93,7 @@ const TaskHistoryItem = ({ index, entry }: TaskHistoryItemProps) => {
         </AccordionButton>
       </Heading>
       <AccordionPanel backgroundColor="gray.100" p="2">
-        <Accordion w="full" defaultIndex={1}>
+        <Accordion allowMultiple w="full" defaultIndex={[1]}>
           <CollapsibleComponent
             title="Prompt"
             subtitle={`${entry.usage?.prompt_tokens} tokens`}
@@ -131,7 +131,7 @@ export default function TaskHistory() {
         <Spacer />
         <CopyButton text={JSON.stringify(taskHistory, null, 2)} />
       </HStack>
-      <Accordion w="full" pb="4">
+      <Accordion allowMultiple w="full" pb="4">
         {taskHistory.map((entry, index) => (
           <TaskHistoryItem key={index} index={index} entry={entry} />
         ))}
