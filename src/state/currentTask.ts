@@ -109,7 +109,7 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
           const query = await determineNextAction(
             instructions,
             previousTasks.filter(
-              ({action}) => !('error' in action)
+              ({action}) => !(('error' in action) || ('fail' in action))
             ),
             currentDom,
             3,
@@ -147,7 +147,7 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
             action.parsedAction.name === 'finish' ||
             action.parsedAction.name === 'fail'
           ) {
-            break;
+            continue;
           }
 
           try {
