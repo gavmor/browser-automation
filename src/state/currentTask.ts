@@ -5,21 +5,34 @@ import {
   reenableExtensions,
 } from '../helpers/disableExtensions';
 import { callDOMAction } from '../helpers/domActions';
-import {
-  ParsedResponse,
-  ParsedResponseSuccess,
-  parseResponse,
-} from '../helpers/parseResponse';
+
 import { determineNextAction } from '../helpers/determineNextAction';
 import templatize from '../helpers/shrinkHTML/templatize';
 import { getSimplifiedDom } from '../helpers/simplifyDom';
 import { sleep, truthyFilter } from '../helpers/utils';
 import { MyStateCreator } from './store';
 
+export type Action =
+  | {
+    thought: string;
+    name: "fail" | "finish"
+  }
+  | {
+      thought: string;
+      name: 'click';
+      args: { elementId: number };
+    }
+  | {
+      thought: string;
+      name: 'setValue';
+      args: { elementId: number; value: string }; // Ensure `value` is required here
+    };
+
+// ... rest of the file remains unchanged ...
 export type TaskHistoryEntry = {
   prompt: string;
   response: string;
-  action: ParsedResponse;
+  action: Action;
   usage: CreateCompletionResponseUsage;
 };
 
@@ -106,7 +119,7 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
 
           setActionStatus('performing-query');
 
-          const query = await determineNextAction(
+          const {action, ...query} = await determineNextAction(
             instructions,
             previousTasks.filter(
               ({action}) => !(('error' in action) || ('fail' in action))
@@ -126,7 +139,6 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
           if (wasStopped()) break;
 
           setActionStatus('performing-action');
-          const action = parseResponse(query.response);
 
           set((state) => {
             state.currentTask.history.push({
@@ -144,19 +156,19 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
           }
           if (
             action === null ||
-            action.parsedAction.name === 'finish' ||
-            action.parsedAction.name === 'fail'
+            action.name === 'finish' ||
+            action.name === 'fail'
           ) {
             continue;
           }
 
           try {
-            if (action.parsedAction.name === 'click') {
-              await callDOMAction('click', action.parsedAction.args);
-            } else if (action.parsedAction.name === 'setValue') {
+            if (action.name === 'click') {
+              await callDOMAction('click', action.args);
+            } else if (action.name === 'setValue') {
               await callDOMAction(
-                action?.parsedAction.name,
-                action?.parsedAction.args
+                action?.name,
+                action?.args
               );
             }
           } catch {

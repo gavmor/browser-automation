@@ -1,12 +1,8 @@
-import {
-  Configuration,
-  CreateCompletionResponseUsage,
-  OpenAIApi,
-} from 'openai';
 import { useAppState } from '../state/store';
 import { availableActions } from './availableActions';
-import { ParsedResponseSuccess } from './parseResponse';
-import { TaskHistoryEntry } from '../state/currentTask';
+import { Action } from '../state/currentTask';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 type OllamaChatResponse = {
   model: string;
@@ -41,13 +37,7 @@ You can use the following tools:
 ${formattedActions}
 
 You will be be given a task to perform and the current state of the DOM. You will also be given previous actions that you have taken. You may retry a failed action up to one time.
-
-This is an example of an action:
-
-<Justification>Since I found the shoes I'm looking for, I will click the button labeled "Add to Cart"</Justification>
-<Action>click(223)</Action>
-
-You must always include the <Justification> and <Action> open/close tags or else your response will be marked as invalid.`;
+`;
 
 export async function determineNextAction(
   taskInstructions: string,
@@ -59,39 +49,32 @@ export async function determineNextAction(
   const model = useAppState.getState().settings.selectedModel;
   const prompt = formatPrompt(taskInstructions, simplifiedDOM);
   for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const messages = chatMessages(previousTasks, prompt);
-      console.log(messages)
-      const response = await fetchCompletion(model, messages);
-      const data: OllamaChatResponse = await response.json();
+    const messages = chatMessages(previousTasks, prompt);
+    const response = await fetchCompletion(model, messages);
+    const data: OllamaChatResponse = await response.json();
+    console.log("data:", data)
 
-      if (!response.ok) { throw new Error(data.message?.content); }
 
-      return {
-        usage: {
-          prompt_tokens: data.prompt_eval_count,
-          completion_tokens: data.eval_count
-        },
-        prompt,
-        response:
-          data.message?.content?.trim(),
-      };
-
-    } catch (error: any) {
-      if (error.message.includes('server error')) {
-        // notifyError && notifyError(error.message);
-      } else {
-        // throw new Error(error.message);
-      }
-    }
+    return {
+      usage: {
+        prompt_tokens: data.prompt_eval_count,
+        completion_tokens: data.eval_count
+      },
+      prompt,
+      response:
+        data.message?.content?.trim(),
+      action: {
+        name: "click",
+        thought: data.message?.content?.trim(),
+        args: { elementId: 42, value: "bar" }
+      } as Action
+    };
   }
 
   throw new Error(
     `Failed to complete query after ${maxAttempts} attempts. Please try again later.`
   );
 }
-
-const actionTemplate = ({ action, thought }: ParsedResponseSuccess): string => `<Justification>${thought}</Justification>\n<Action>${action}</Action>`;
 
 export const formatPrompt = (
   taskInstructions: string,
@@ -105,12 +88,12 @@ ${pageContents}`;
 
 function chatMessages(previousTasks: any[], prompt: string) {
   return [
-    ...previousTasks.map(({action, prompt}) => ([
+    ...previousTasks.map(({ action, prompt }) => ([
       { role: 'user', content: prompt },
-      { role: 'assistant', content: actionTemplate(action) }
-  ])).flat(),
-  { role: 'system', content: systemMessage, },
-  { role: 'user', content: prompt },
+      { role: 'assistant', content: action }
+    ])).flat(),
+    { role: 'system', content: systemMessage, },
+    { role: 'user', content: prompt },
   ];
 }
 
@@ -118,6 +101,15 @@ type Message = {
   role: string;
   content: string;
 };
+
+export const ActionFormat = z.object({
+  name: z.string(),
+  thought: z.string(),
+  args: z.object({
+    elementID: z.number(),
+    value: z.string(),
+  }),
+});
 
 async function fetchCompletion(model: string, messages: Message[]) {
   return await fetch('http://localhost:11434/api/chat', {
@@ -127,7 +119,7 @@ async function fetchCompletion(model: string, messages: Message[]) {
       stream: false,
       messages,
       model,
+      format: ActionFormat
     })
-  });
+  })
 }
-

@@ -68,12 +68,12 @@ const TaskHistoryItem = ({ index, entry }: TaskHistoryItemProps) => {
     text: undefined,
     bg: undefined,
   };
-  if ('error' in entry.action || entry.action.parsedAction.name === 'fail') {
+  if ('error' in entry.action || entry.action.name === 'fail') {
     colors.text = 'red.800';
     colors.bg = 'red.100';
   } else if (
     'parsedAction' in entry.action &&
-    entry.action.parsedAction.name === 'finish'
+    entry.action.name === 'finish'
   ) {
     colors.text = 'green.800';
     colors.bg = 'green.100';

@@ -15,7 +15,7 @@ const ModelDropdown = () => {
   }, [])
 
   return (
-    // Chakra UI Select component
+    // @ts-ignore
     <Select
       value={selectedModel || ''}
       onChange={(e) => updateSettings({ selectedModel: e.target.value })}>
