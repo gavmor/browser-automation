@@ -127,15 +127,6 @@ async function fetchCompletion(model: string, messages: Message[]) {
       stream: false,
       messages,
       model,
-      seed: 42,
-      options: {
-        // top_k: 10,
-        // top_p: 0.8,
-        num_ctx: 65536,
-        temperature: 2,
-        // repeat_penalty: 2,
-        // repeat_last_n: -1
-      },
     })
   });
 }
