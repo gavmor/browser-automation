@@ -20,15 +20,6 @@ type OllamaChatResponse = {
   eval_duration: number;
 };
 
-const formattedActions = availableActions
-  .map((action, i) => {
-    const args = action.args
-      .map((arg) => `${arg.name}: ${arg.type}`)
-      .join(', ');
-    return `${i + 1}. ${action.name}(${args}): ${action.description}`;
-  })
-  .join('\n');
-
 const systemMessage = `
 You are a browser automation assistant.
 
@@ -67,23 +58,29 @@ export async function determineNextAction(
   const model = useAppState.getState().settings.selectedModel;
   const prompt = formatPrompt(taskInstructions, simplifiedDOM);
   for (let i = 0; i < maxAttempts; i++) {
-    const messages = chatMessages(previousTasks, prompt);
-    const response = await fetchCompletion(model, messages);
-    const data: OllamaChatResponse = await response.json();
-    console.log("data:", JSON.parse(data.message.content))
+    try {
+      const messages = chatMessages(previousTasks, prompt);
+      const response = await fetchCompletion(model, messages);
+      const data: OllamaChatResponse = await response.json();
+      console.log("data:", JSON.parse(data.message.content))
 
-
-    return {
-      usage: {
-        prompt_tokens: data.prompt_eval_count,
-        completion_tokens: data.eval_count
-      },
-      prompt,
-      response:
-        data.message?.content?.trim(),
-      attempt: format.parse(data.message.content)
-    };
+      return {
+        usage: {
+          prompt_tokens: data.prompt_eval_count,
+          completion_tokens: data.eval_count
+        },
+        prompt,
+        response:
+          data.message?.content?.trim(),
+        attempt: format.parse(JSON.parse(data.message.content))
+      };
+    } catch(error) {
+      notifyError && notifyError(error);
+      console.log("error:", error);
+      break;
+    }
   }
+
 
   throw new Error(
     `Failed to complete query after ${maxAttempts} attempts. Please try again later.`
@@ -130,15 +127,15 @@ export const format = z.discriminatedUnion('action', [
     rationale: z.string(),
     args: z.object({
       elementId: z.number(),
-    }), 
+    }),
   }),
   z.object({
     action: z.literal('setValue'),
     rationale: z.string(),
     args: z.object({
       elementId: z.number(),
-      value: z.string(), 
-    }), 
+      value: z.string(),
+    }),
   }),
 ]);
 
