@@ -101,7 +101,7 @@ function chatMessages(previousTasks: any[], prompt: string) {
   return [
     ...previousTasks.map(({ action, prompt }) => ([
       { role: 'user', content: prompt },
-      { role: 'assistant', content: action }
+      { role: 'assistant', content: JSON.stringify(action) }
     ])).flat(),
     { role: 'system', content: systemMessage, },
     { role: 'user', content: prompt },
