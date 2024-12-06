@@ -32,11 +32,29 @@ const formattedActions = availableActions
 const systemMessage = `
 You are a browser automation assistant.
 
-You can use the following tools:
+You will be be given a task to perform and the current state of the DOM.
+You will also be given previous actions that you have taken.
+You may retry a failed action up to one time.
 
-${formattedActions}
+Reveal your \`rationale\` as you select your next \`action\` of the following type:
 
-You will be be given a task to perform and the current state of the DOM. You will also be given previous actions that you have taken. You may retry a failed action up to one time.
+\`\`\`
+type Attempt =
+  | {
+    rationale: string;
+    action: "fail" | "finish" // Indicates the task is finished or impossible.
+  }
+  | {
+      rationale: string;
+      action: 'click'; // Clicks on an element
+      args: { elementId: number };
+    }
+  | {
+      rationale: string;
+      action: 'setValue'; // Focuses on and sets the value of an input element
+      args: { elementId: number; value: string };
+    };
+\`\`\`
 `;
 
 export async function determineNextAction(
@@ -52,7 +70,7 @@ export async function determineNextAction(
     const messages = chatMessages(previousTasks, prompt);
     const response = await fetchCompletion(model, messages);
     const data: OllamaChatResponse = await response.json();
-    console.log("data:", data)
+    console.log("data:", JSON.parse(data.message.content))
 
 
     return {
@@ -63,11 +81,7 @@ export async function determineNextAction(
       prompt,
       response:
         data.message?.content?.trim(),
-      action: {
-        name: "click",
-        thought: data.message?.content?.trim(),
-        args: { elementId: 42, value: "bar" }
-      } as Action
+      attempt: format.parse(data.message.content)
     };
   }
 
@@ -102,14 +116,31 @@ type Message = {
   content: string;
 };
 
-export const ActionFormat = z.object({
-  name: z.string(),
-  thought: z.string(),
-  args: z.object({
-    elementID: z.number(),
-    value: z.string(),
+export const format = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('fail'),
+    rationale: z.string(),
   }),
-});
+  z.object({
+    action: z.literal('finish'),
+    rationale: z.string(),
+  }),
+  z.object({
+    action: z.literal('click'),
+    rationale: z.string(),
+    args: z.object({
+      elementId: z.number(),
+    }), 
+  }),
+  z.object({
+    action: z.literal('setValue'),
+    rationale: z.string(),
+    args: z.object({
+      elementId: z.number(),
+      value: z.string(), 
+    }), 
+  }),
+]);
 
 async function fetchCompletion(model: string, messages: Message[]) {
   return await fetch('http://localhost:11434/api/chat', {
@@ -119,7 +150,7 @@ async function fetchCompletion(model: string, messages: Message[]) {
       stream: false,
       messages,
       model,
-      format: ActionFormat
+      format: format
     })
   })
 }

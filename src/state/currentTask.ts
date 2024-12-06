@@ -14,16 +14,16 @@ import { MyStateCreator } from './store';
 
 export type Action =
   | {
-    thought: string;
+    rationale: string;
     name: "fail" | "finish"
   }
   | {
-      thought: string;
+      rationale: string;
       name: 'click';
       args: { elementId: number };
     }
   | {
-      thought: string;
+      rationale: string;
       name: 'setValue';
       args: { elementId: number; value: string }; // Ensure `value` is required here
     };
@@ -119,7 +119,7 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
 
           setActionStatus('performing-query');
 
-          const {action, ...query} = await determineNextAction(
+          const {attempt, ...query} = await determineNextAction(
             instructions,
             previousTasks.filter(
               ({action}) => !(('error' in action) || ('fail' in action))
@@ -144,31 +144,32 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
             state.currentTask.history.push({
               prompt: query.prompt,
               response: query.response,
-              action,
+              // @ts-expect-error
+              action: {...attempt, name: attempt.action},
               usage: {...query.usage, total_tokens: query.usage.completion_tokens + query.usage.prompt_tokens},
             });
           });
-          if ('error' in action) {
+          if ('error' in attempt) {
             // onError(action.error);
             // break;
-            console.log(action.error)
+            console.log(attempt.error)
             continue
           }
           if (
-            action === null ||
-            action.name === 'finish' ||
-            action.name === 'fail'
+            attempt === null ||
+            attempt.action === 'finish' ||
+            attempt.action === 'fail'
           ) {
             continue;
           }
 
           try {
-            if (action.name === 'click') {
-              await callDOMAction('click', action.args);
-            } else if (action.name === 'setValue') {
+            if (attempt.action === 'click') {
+              await callDOMAction('click', attempt.args);
+            } else if (attempt.action === 'setValue') {
               await callDOMAction(
-                action?.name,
-                action?.args
+                attempt.action,
+                attempt.args
               );
             }
           } catch {

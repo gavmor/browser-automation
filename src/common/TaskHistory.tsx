@@ -57,8 +57,8 @@ const TaskHistoryItem = ({ index, entry }: TaskHistoryItemProps) => {
   let itemTitle = '';
   if ('error' in entry.action) {
     itemTitle = `Error: ${entry.action.error}`;
-  } else if (entry.action?.thought) {
-    itemTitle = entry.action.thought;
+  } else if (entry.action?.rationale) {
+    itemTitle = entry.action.rationale;
   }
 
   const colors: {
