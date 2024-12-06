@@ -58,11 +58,12 @@ export async function determineNextAction(
   const model = useAppState.getState().settings.selectedModel;
   const prompt = formatPrompt(taskInstructions, simplifiedDOM);
   for (let i = 0; i < maxAttempts; i++) {
+    const messages = chatMessages(previousTasks, prompt);
     try {
-      const messages = chatMessages(previousTasks, prompt);
       const response = await fetchCompletion(model, messages);
       const data: OllamaChatResponse = await response.json();
-      console.log("data:", JSON.parse(data.message.content))
+      
+      if("error" in data) throw data.error
 
       return {
         usage: {
@@ -75,9 +76,8 @@ export async function determineNextAction(
         attempt: format.parse(JSON.parse(data.message.content))
       };
     } catch(error) {
-      notifyError && notifyError(error);
+      notifyError && notifyError(`ERROR! ${error} ${error?.message}"`);
       console.log("error:", error);
-      break;
     }
   }
 
@@ -147,7 +147,7 @@ async function fetchCompletion(model: string, messages: Message[]) {
       stream: false,
       messages,
       model,
-      format: format
+      format: zodToJsonSchema(format),
     })
   })
 }

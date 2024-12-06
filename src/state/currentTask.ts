@@ -15,20 +15,19 @@ import { MyStateCreator } from './store';
 export type Action =
   | {
     rationale: string;
-    name: "fail" | "finish"
+    action: "fail" | "finish"
   }
   | {
       rationale: string;
-      name: 'click';
+      action: 'click';
       args: { elementId: number };
     }
   | {
       rationale: string;
-      name: 'setValue';
-      args: { elementId: number; value: string }; // Ensure `value` is required here
+      action: 'setValue';
+      args: { elementId: number; value: string }; 
     };
 
-// ... rest of the file remains unchanged ...
 export type TaskHistoryEntry = {
   prompt: string;
   response: string;
@@ -144,8 +143,7 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
             state.currentTask.history.push({
               prompt: query.prompt,
               response: query.response,
-              // @ts-expect-error
-              action: {...attempt, name: attempt.action},
+              action: attempt,
               usage: {...query.usage, total_tokens: query.usage.completion_tokens + query.usage.prompt_tokens},
             });
           });

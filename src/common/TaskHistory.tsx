@@ -54,40 +54,15 @@ const CollapsibleComponent = (props: {
 );
 
 const TaskHistoryItem = ({ index, entry }: TaskHistoryItemProps) => {
-  let itemTitle = '';
-  if ('error' in entry.action) {
-    itemTitle = `Error: ${entry.action.error}`;
-  } else if (entry.action?.rationale) {
-    itemTitle = entry.action.rationale;
-  }
-
-  const colors: {
-    text: ColorProps['textColor'];
-    bg: BackgroundProps['bgColor'];
-  } = {
-    text: undefined,
-    bg: undefined,
-  };
-  if ('error' in entry.action || entry.action.name === 'fail') {
-    colors.text = 'red.800';
-    colors.bg = 'red.100';
-  } else if (
-    'parsedAction' in entry.action &&
-    entry.action.name === 'finish'
-  ) {
-    colors.text = 'green.800';
-    colors.bg = 'green.100';
-  }
-
   return (
     <AccordionItem>
-      <Heading as="h3" size="sm" textColor={colors.text} bgColor={colors.bg}>
+      <Heading as="h3" size="sm" textColor={(colors(entry)).text} bgColor={(colors(entry)).bg}>
         <AccordionButton>
           <Box mr="4" fontWeight="bold">
             {index + 1}.
           </Box>
           <Box as="span" textAlign="left" flex="1">
-            {itemTitle}
+            {itemTitle(entry)}
           </Box>
           <AccordionIcon />
         </AccordionButton>
@@ -114,6 +89,25 @@ const TaskHistoryItem = ({ index, entry }: TaskHistoryItemProps) => {
   );
 };
 
+function colors(entry: TaskHistoryEntry): {
+  text: ColorProps['textColor'];
+  bg: BackgroundProps['bgColor'];
+} {
+  if (entry.action.action === 'fail') {
+    return { text: 'red.800', bg: 'red.100' }
+  }
+
+  if (entry.action.action === 'finish') {
+    return { text: 'green.800', bg: 'green.100' }
+  }
+
+  return { text: undefined, bg: undefined }
+}
+
+function itemTitle(entry: TaskHistoryEntry) {
+  return entry.action.rationale || "Error: ???";
+}
+
 export default function TaskHistory() {
   const { taskHistory, taskStatus } = useAppState((state) => ({
     taskStatus: state.currentTask.status,
@@ -122,7 +116,7 @@ export default function TaskHistory() {
 
   if (taskHistory.length === 0 && taskStatus !== 'running') return null;
 
-  return (
+  return ( 
     <VStack mt={8}>
       <HStack w="full">
         <Heading as="h3" size="md">
