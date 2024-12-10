@@ -12,7 +12,7 @@ import { getSimplifiedDom } from '../helpers/simplifyDom';
 import { sleep, truthyFilter } from '../helpers/utils';
 import { MyStateCreator } from './store';
 
-export type Action =
+export type Attempt =
   | {
     rationale: string;
     action: "fail" | "finish"
@@ -31,7 +31,7 @@ export type Action =
 export type TaskHistoryEntry = {
   prompt: string;
   response: string;
-  action: Action;
+  action: Attempt;
   usage: CreateCompletionResponseUsage;
 };
 
@@ -121,10 +121,10 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
           const {attempt, ...query} = await determineNextAction(
             instructions,
             previousTasks.filter(
-              ({action}) => !(('error' in action) || ('fail' in action))
+              ({action: {action}}) => !(action == "fail" || action == "finish")
             ),
             currentDom,
-            3,
+            Infinity,
             onError
           );
 
@@ -178,7 +178,7 @@ export const createCurrentTaskSlice: MyStateCreator<CurrentTaskSlice> = (
 
           // While testing let's automatically stop after 50 actions to avoid
           // infinite loops
-          if (get().currentTask.history.length >= 50) {
+          if (get().currentTask.history.length >= Infinity) {
             break;
           }
 
