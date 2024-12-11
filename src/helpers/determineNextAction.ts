@@ -56,7 +56,7 @@ export async function determineNextAction(
         usage: { prompt_tokens, completion_tokens },
         prompt,
         response: message?.content?.trim(),
-        attempt: format().parse(JSON.parse(message.content)) as Attempt,
+        attempt: format(simplifiedDOM).parse(JSON.parse(message.content)) as Attempt,
       };
     } catch (error) {
       notifyError && notifyError(`${error}`);
@@ -133,36 +133,32 @@ function extractIDs(html: string): number[] {
   return ids;
 }
 
-export const format = (markup?:string) => z.discriminatedUnion('action', [
+export const format = (markup:string) => z.discriminatedUnion('action', [
   z.object({
+    rationale: z.string(),
     action: z.literal('fail'),
-    rationale: z.string(),
   }),
   z.object({
+    rationale: z.string(),
     action: z.literal('finish'),
-    rationale: z.string(),
   }),
   z.object({
-    action: z.literal('click'),
     rationale: z.string(),
-    args: z.object({
-      elementId: numberOrLiteralIDs(markup),
+    args: z.object({ // @ts-expect-error
+      elementId: z.union(extractIDs(markup).map(z.literal)),
     }),
+    action: z.literal('click'),
   }),
   z.object({
-    action: z.literal('setValue'),
     rationale: z.string(),
-    args: z.object({
-      elementId: numberOrLiteralIDs(markup),
+    args: z.object({ // @ts-expect-error
+      elementId: z.union(extractIDs(markup).map(z.literal)),
       value: z.string(),
     }),
+    action: z.literal('setValue'),
   }),
 ]);
 
-function numberOrLiteralIDs(markup: string | undefined): any {
-  // @ts-expect-error // Apparently typescript thinks z.union demands 1+ members; NOT!
-  return markup ? z.union(extractIDs(markup).map(z.literal(id))) : z.number();
-}
 
 async function fetchCompletion(model: string, messages: Message[]) {
   return await fetch('http://localhost:11434/api/chat', {
