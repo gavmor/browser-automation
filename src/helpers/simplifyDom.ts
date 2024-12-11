@@ -21,7 +21,7 @@ export async function getSimplifiedDom() {
   return simplifiedDom;
 }
 
-function generateSimplifiedDom(
+export function generateSimplifiedDom(
   element: ChildNode,
   interactiveElements: HTMLElement[]
 ): ChildNode | null {
