@@ -1,8 +1,9 @@
 import { useAppState } from '../state/store';
 import { availableActions } from './availableActions';
 import { Attempt } from '../state/currentTask';
-import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { errorMap, extractIDs, format } from './format';
+import { fetchInference } from './fetchCompletion';
 
 type OllamaChatResponse = {
   model: string;
@@ -29,19 +30,13 @@ You will also be given previous actions that you have taken.
 You will be asked to select an action, and rationalize it in terms of your previous actions.
 `;
 
-export const errorMap = (error: z.ZodIssueOptionalMessage, ctx: z.ErrorMapCtx): { message: string; } => {
-  if (error.path[0] === 'action' && error.code === z.ZodIssueCode.invalid_union_discriminator) {
-    return { message: `${ctx.data.action} not among ${error.options.join(' | ')}}` }
-  }
-  return { message: ctx.defaultError };
-};
-
 export async function determineNextAction(
   taskInstructions: string,
   previousTasks: any[],
   simplifiedDOM: string,
   MAX_ATTEMPTS = Infinity,
-  notifyError?: (error: string) => void
+  notifyError?: (error: string) => void,
+  completion = fetchInference
 ) {
   const model = useAppState.getState().settings.selectedModel;
   const prompt = formatPrompt(taskInstructions, simplifiedDOM);
@@ -49,7 +44,7 @@ export async function determineNextAction(
     const messages = chatMessages(previousTasks, prompt);
 
     try {
-      const response = await fetchCompletion(model, messages);
+      const response = await completion(model, messages);
       const {
         prompt_eval_count: prompt_tokens,
         eval_count: completion_tokens,
@@ -120,58 +115,9 @@ function chatMessages(previousTasks: any[], prompt: string) {
   ];
 }
 
-type Message = {
+export type Message = {
   role: string;
   content: string;
 };
 
-const extractIDs = (html: string): number[] =>
-  Array.from(html.matchAll(/id=["']([^"']+)["']/g))
-    .map(match => parseInt(match[1]));
-
-export const format = (markup:string) => z.discriminatedUnion('action', [
-  z.object({
-    rationale: z.string(),
-    action: z.literal('fail'),
-  }),
-  z.object({
-    rationale: z.string(),
-    action: z.literal('finish'),
-  }),
-  z.object({
-    rationale: z.string(),
-    args: z.object({ elementId: idLiterals(markup) }),
-    action: z.literal('click'),
-  }),
-  z.object({
-    rationale: z.string(),
-    args: z.object({ elementId: idLiterals(markup), value: z.string() }),
-    action: z.literal('setValue'),
-  }),
-]);
-
-function idLiterals(markup: string): z.ZodUnion<[z.ZodLiteral<number>, z.ZodLiteral<number>, ...z.ZodLiteral<number>[]]> {
-  return z.union(extractIDs(markup) // https://github.com/colinhacks/zod/issues/3383
-    .map(id => z.literal(id)) as [z.ZodLiteral<number>, z.ZodLiteral<number>, ...z.ZodLiteral<number>[]]);
-}
-
-async function fetchCompletion(model: string, messages: Message[]) {
-  return await fetch('http://localhost:11434/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      stream: false,
-      messages,
-      model,
-      format: zodToJsonSchema(format(extractMarkupFromPromptToScrapeIDs(messages))),
-      options: {
-        temperature: 2,
-        num_ctx: 16384,
-      },
-    }),
-  });
-}
-function extractMarkupFromPromptToScrapeIDs(messages: Message[]): string {
-  return messages[messages.length - 1].content;
-}
 
