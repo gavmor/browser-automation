@@ -118,20 +118,9 @@ type Message = {
   content: string;
 };
 
-function extractIDs(html: string): number[] {
-  // Regular expression to match id attributes in the format id="value" or id='value'
-  const idRegex = /id=["']([^"']+)["']/g;
-  const ids: number[] = [];
-  let match: RegExpExecArray | null;
-
-  // Use regex to find all matches in the HTML string
-  while ((match = idRegex.exec(html)) !== null) {
-      // Push the captured group (the id value) into the ids array
-      ids.push(Number(match[1]));
-  }
-
-  return ids;
-}
+const extractIDs = (html: string): number[] =>
+  Array.from(html.matchAll(/id=["']([^"']+)["']/g))
+    .map(match => parseInt(match[1]));
 
 export const format = (markup:string) => z.discriminatedUnion('action', [
   z.object({
