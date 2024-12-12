@@ -133,21 +133,20 @@ export const format = (markup:string) => z.discriminatedUnion('action', [
   }),
   z.object({
     rationale: z.string(),
-    args: z.object({ // @ts-expect-error
-      elementId: z.union(extractIDs(markup).map(z.literal)),
-    }),
+    args: z.object({ elementId: idLiterals(markup) }),
     action: z.literal('click'),
   }),
   z.object({
     rationale: z.string(),
-    args: z.object({ // @ts-expect-error
-      elementId: z.union(extractIDs(markup).map(z.literal)),
-      value: z.string(),
-    }),
+    args: z.object({ elementId: idLiterals(markup), value: z.string() }),
     action: z.literal('setValue'),
   }),
 ]);
 
+function idLiterals(markup: string): z.ZodUnion<[z.ZodLiteral<number>, z.ZodLiteral<number>, ...z.ZodLiteral<number>[]]> {
+  return z.union(extractIDs(markup) // https://github.com/colinhacks/zod/issues/3383
+    .map(id => z.literal(id)) as [z.ZodLiteral<number>, z.ZodLiteral<number>, ...z.ZodLiteral<number>[]]);
+}
 
 async function fetchCompletion(model: string, messages: Message[]) {
   return await fetch('http://localhost:11434/api/chat', {
