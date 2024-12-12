@@ -29,6 +29,13 @@ You will also be given previous actions that you have taken.
 You will be asked to select an action, and rationalize it in terms of your previous actions.
 `;
 
+export const errorMap = (error: z.ZodIssueOptionalMessage, ctx: z.ErrorMapCtx): { message: string; } => {
+  if (error.path[0] === 'action' && error.code === z.ZodIssueCode.invalid_union_discriminator) {
+    return { message: `${ctx.data.action} not among ${error.options.join(' | ')}}` }
+  }
+  return { message: ctx.defaultError };
+};
+
 export async function determineNextAction(
   taskInstructions: string,
   previousTasks: any[],
@@ -56,7 +63,7 @@ export async function determineNextAction(
         usage: { prompt_tokens, completion_tokens },
         prompt,
         response: message?.content?.trim(),
-        attempt: format(simplifiedDOM).parse(JSON.parse(message.content)) as Attempt,
+        attempt: format(simplifiedDOM).parse(JSON.parse(message.content), { errorMap }),
       };
     } catch (error) {
       notifyError && notifyError(`${error}`);
